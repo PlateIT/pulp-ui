@@ -1,0 +1,35 @@
+[Unit]
+Description=Pulp repository platform
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/pulp/pulp.env
+ExecStartPre=-/usr/bin/docker rm -f pulp
+ExecStart=/usr/bin/docker run --name pulp \
+  --publish 443:443 \
+  --env PULP_HTTPS=true \
+  --env PULP_AUTH_MODE=sso \
+  --env PULP_WORKERS=2 \
+  --env PULP_API_WORKERS=2 \
+  --env PULP_CONTENT_WORKERS=2 \
+  --env PYTHONPATH=/etc/pulp \
+  --env-file /etc/pulp/pulp.env \
+  --volume /etc/pulp:/etc/pulp:Z \
+  --volume /etc/pulp/nginx-root-redirect.conf:/etc/nginx/pulp/root_redirect.conf:ro,Z \
+  --volume /data/pulp/storage:/var/lib/pulp:Z \
+  --volume /data/pulp/postgresql:/var/lib/pgsql:Z \
+  --volume /data/pulp/containers:/var/lib/containers:Z \
+  --volume /data/pulp/container-build:/var/lib/pulp/.local/share/containers:Z \
+  --device /dev/fuse \
+  axalon/pulp:ui-sso-update
+ExecStop=/usr/bin/docker stop --time 90 pulp
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=0
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
